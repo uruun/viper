@@ -3,11 +3,10 @@
 package viper
 
 import (
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
-
-	"github.com/spf13/afero"
 )
 
 // Search all configPaths for any config file.
@@ -44,12 +43,12 @@ func (v *Viper) searchInPath(in string) (filename string) {
 }
 
 // exists checks if file exists.
-func exists(fs afero.Fs, path string) (bool, error) {
-	stat, err := fs.Stat(path)
+func exists(f fs.FS, path string) (bool, error) {
+	stat, err := fs.Stat(f, path)
 	if err == nil {
 		return !stat.IsDir(), nil
 	}
-	if os.IsNotExist(err) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
 	return false, err

@@ -25,18 +25,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+	"testing/fstest"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/mapstructure"
 	slog "github.com/sagikazarmark/slog-shim"
-	"github.com/spf13/afero"
 	"github.com/spf13/cast"
 	"github.com/spf13/pflag"
 
@@ -188,7 +189,7 @@ type Viper struct {
 	configPaths []string
 
 	// The filesystem to read config from.
-	fs afero.Fs
+	fs fs.FS
 
 	// A set of remote providers to search for the configuration
 	remoteProviders []*defaultRemoteProvider
@@ -232,7 +233,7 @@ func New() *Viper {
 	v.keyDelim = "."
 	v.configName = "config"
 	v.configPermissions = os.FileMode(0o644)
-	v.fs = afero.NewOsFs()
+	v.fs = fstest.MapFS{}
 	v.config = make(map[string]any)
 	v.parents = []string{}
 	v.override = make(map[string]any)
@@ -1643,7 +1644,7 @@ func (v *Viper) ReadInConfig() error {
 	}
 
 	v.logger.Debug("reading file", "file", filename)
-	file, err := afero.ReadFile(v.fs, filename)
+	file, err := fs.ReadFile(v.fs, filename)
 	if err != nil {
 		return err
 	}
@@ -1673,7 +1674,7 @@ func (v *Viper) MergeInConfig() error {
 		return UnsupportedConfigError(v.getConfigType())
 	}
 
-	file, err := afero.ReadFile(v.fs, filename)
+	file, err := fs.ReadFile(v.fs, filename)
 	if err != nil {
 		return err
 	}
@@ -1746,8 +1747,11 @@ func (v *Viper) WriteConfigAs(filename string) error {
 func SafeWriteConfigAs(filename string) error { return v.SafeWriteConfigAs(filename) }
 
 func (v *Viper) SafeWriteConfigAs(filename string) error {
-	alreadyExists, err := afero.Exists(v.fs, filename)
-	if alreadyExists && err == nil {
+	e, err := exists(v.fs, filename)
+	if err != nil {
+		return err
+	}
+	if e {
 		return ConfigFileAlreadyExistsError(filename)
 	}
 	return v.writeConfig(filename, false)
@@ -1778,7 +1782,7 @@ func (v *Viper) writeConfig(filename string, force bool) error {
 	if !force {
 		flags |= os.O_EXCL
 	}
-	f, err := v.fs.OpenFile(filename, flags, v.configPermissions)
+	f, err := os.OpenFile(filename, flags, v.configPermissions)
 	if err != nil {
 		return err
 	}
@@ -1808,7 +1812,7 @@ func (v *Viper) unmarshalReader(in io.Reader, c map[string]any) error {
 }
 
 // Marshal a map into Writer.
-func (v *Viper) marshalWriter(f afero.File, configType string) error {
+func (v *Viper) marshalWriter(f *os.File, configType string) error {
 	c := v.AllSettings()
 	switch configType {
 	case "yaml", "yml", "json", "toml", "hcl", "tfvars", "ini", "prop", "props", "properties", "dotenv", "env":
@@ -2163,9 +2167,9 @@ func (v *Viper) getSettings(keys []string) map[string]any {
 }
 
 // SetFs sets the filesystem to use to read configuration.
-func SetFs(fs afero.Fs) { v.SetFs(fs) }
+func SetFs(fs fs.FS) { v.SetFs(fs) }
 
-func (v *Viper) SetFs(fs afero.Fs) {
+func (v *Viper) SetFs(fs fs.FS) {
 	v.fs = fs
 }
 
