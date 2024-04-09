@@ -230,15 +230,41 @@ func (s *stringValue) String() string {
 	return string(*s)
 }
 
+type fileInfo struct {
+	fs.FileInfo
+	isDir bool
+}
+
+func (f fileInfo) IsDir() bool {
+	return f.isDir
+}
+
+type MapFS struct {
+	fstest.MapFS
+}
+
+func (m MapFS) Stat(name string) (fs.FileInfo, error) {
+	v, ok := m.MapFS[name]
+	if ok {
+		return fileInfo{isDir: v.Mode.IsDir()}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
+func (m MapFS) ReadFile(name string) ([]byte, error) {
+	v, ok := m.MapFS[name]
+	if ok {
+		return v.Data, nil
+	}
+
+	return nil, fs.ErrNotExist
+}
+
 func TestGetConfigFile(t *testing.T) {
 	t.Run("config file set", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{}
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{}
 
 		v := New()
 
@@ -252,13 +278,9 @@ func TestGetConfigFile(t *testing.T) {
 	})
 
 	t.Run("find file", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{}
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{}
 
 		v := New()
 
@@ -271,13 +293,9 @@ func TestGetConfigFile(t *testing.T) {
 	})
 
 	t.Run("find files only", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/config")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/config/config.yaml")] = &fstest.MapFile{}
+		f.MapFS[testutil.AbsFilePath(t, "/etc/config/config.yaml")] = &fstest.MapFile{}
 
 		v := New()
 
@@ -291,25 +309,13 @@ func TestGetConfigFile(t *testing.T) {
 	})
 
 	t.Run("precedence", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/home/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
+		f.MapFS[testutil.AbsFilePath(t, "/home/viper/config.zml")] = &fstest.MapFile{}
 
-		f[testutil.AbsFilePath(t, "/home/viper/config.zml")] = &fstest.MapFile{}
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/config.bml")] = &fstest.MapFile{}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/config.bml")] = &fstest.MapFile{}
-
-		f[testutil.AbsFilePath(t, "/var/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/var/viper/config.yaml")] = &fstest.MapFile{}
+		f.MapFS[testutil.AbsFilePath(t, "/var/viper/config.yaml")] = &fstest.MapFile{}
 
 		v := New()
 
@@ -324,13 +330,9 @@ func TestGetConfigFile(t *testing.T) {
 	})
 
 	t.Run("without extension", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/.dotfilenoext")] = &fstest.MapFile{
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/.dotfilenoext")] = &fstest.MapFile{
 			Data: []byte(`key: value`),
 		}
 
@@ -347,13 +349,9 @@ func TestGetConfigFile(t *testing.T) {
 	})
 
 	t.Run("without extension and config type", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/.dotfilenoext")] = &fstest.MapFile{
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/.dotfilenoext")] = &fstest.MapFile{
 			Data: []byte(`key: value`),
 		}
 
@@ -372,13 +370,9 @@ func TestGetConfigFile(t *testing.T) {
 
 func TestReadInConfig(t *testing.T) {
 	t.Run("config file set", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{
 			Data: []byte(`key: value`),
 		}
 
@@ -394,13 +388,9 @@ func TestReadInConfig(t *testing.T) {
 	})
 
 	t.Run("find file", func(t *testing.T) {
-		f := fstest.MapFS{}
+		f := MapFS{MapFS: fstest.MapFS{}}
 
-		f[testutil.AbsFilePath(t, "/etc/viper")] = &fstest.MapFile{
-			Mode: fs.ModeDir,
-		}
-
-		f[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{
+		f.MapFS[testutil.AbsFilePath(t, "/etc/viper/config.yaml")] = &fstest.MapFile{
 			Data: []byte(`key: value`),
 		}
 

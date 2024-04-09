@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 )
 
@@ -52,4 +53,26 @@ func exists(f fs.FS, path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+type OsFS struct{}
+
+func (o OsFS) Open(name string) (fs.File, error) {
+	return os.Open(name)
+}
+
+func (o OsFS) Glob(pattern string) ([]string, error) {
+	return filepath.Glob(pattern)
+}
+
+func (o OsFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+func (o OsFS) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+
+func (o OsFS) Stat(name string) (fs.FileInfo, error) {
+	return os.Stat(name)
 }

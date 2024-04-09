@@ -32,7 +32,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"testing/fstest"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -233,7 +232,7 @@ func New() *Viper {
 	v.keyDelim = "."
 	v.configName = "config"
 	v.configPermissions = os.FileMode(0o644)
-	v.fs = fstest.MapFS{}
+	v.fs = OsFS{}
 	v.config = make(map[string]any)
 	v.parents = []string{}
 	v.override = make(map[string]any)
