@@ -55,24 +55,24 @@ func exists(f fs.FS, path string) (bool, error) {
 	return false, err
 }
 
-type OsFS struct{}
+type osFS struct{}
 
-func (o OsFS) Open(name string) (fs.File, error) {
+func (o osFS) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
-func (o OsFS) Glob(pattern string) ([]string, error) {
+func (o osFS) Glob(pattern string) ([]string, error) {
 	return filepath.Glob(pattern)
 }
 
-func (o OsFS) ReadDir(name string) ([]fs.DirEntry, error) {
+func (o osFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	return os.ReadDir(name)
 }
 
-func (o OsFS) ReadFile(name string) ([]byte, error) {
+func (o osFS) ReadFile(name string) ([]byte, error) {
 	return os.ReadFile(name)
 }
 
-func (o OsFS) Stat(name string) (fs.FileInfo, error) {
+func (o osFS) Stat(name string) (fs.FileInfo, error) {
 	return os.Stat(name)
 }

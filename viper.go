@@ -232,7 +232,7 @@ func New() *Viper {
 	v.keyDelim = "."
 	v.configName = "config"
 	v.configPermissions = os.FileMode(0o644)
-	v.fs = OsFS{}
+	v.fs = osFS{}
 	v.config = make(map[string]any)
 	v.parents = []string{}
 	v.override = make(map[string]any)
