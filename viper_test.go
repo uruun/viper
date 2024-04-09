@@ -1750,7 +1750,7 @@ p_batters.batter.type = Regular
 // `)
 
 func TestWriteConfig(t *testing.T) {
-	fs := fstest.MapFS{}
+	f := mockFS{fstest.MapFS{}}
 	testCases := map[string]struct {
 		configName      string
 		inConfigType    string
@@ -1851,7 +1851,7 @@ func TestWriteConfig(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			v := New()
-			v.SetFs(fs)
+			v.SetFs(f)
 			v.SetConfigName(tc.fileName)
 			v.SetConfigType(tc.inConfigType)
 
@@ -1860,7 +1860,7 @@ func TestWriteConfig(t *testing.T) {
 			v.SetConfigType(tc.outConfigType)
 			err = v.WriteConfigAs(tc.fileName)
 			require.NoError(t, err)
-			read, err := fs.ReadFile(tc.fileName)
+			read, err := f.ReadFile(tc.fileName)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedContent, read)
 		})
@@ -1868,7 +1868,7 @@ func TestWriteConfig(t *testing.T) {
 }
 
 func TestWriteConfigTOML(t *testing.T) {
-	fs := fstest.MapFS{}
+	f := mockFS{fstest.MapFS{}}
 
 	testCases := map[string]struct {
 		configName string
@@ -1892,7 +1892,7 @@ func TestWriteConfigTOML(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			v := New()
-			v.SetFs(fs)
+			v.SetFs(f)
 			v.SetConfigName(tc.configName)
 			v.SetConfigType(tc.configType)
 			err := v.ReadConfig(bytes.NewBuffer(tc.input))
@@ -1903,7 +1903,7 @@ func TestWriteConfigTOML(t *testing.T) {
 			// The TOML String method does not order the contents.
 			// Therefore, we must read the generated file and compare the data.
 			v2 := New()
-			v2.SetFs(fs)
+			v2.SetFs(f)
 			v2.SetConfigName(tc.configName)
 			v2.SetConfigType(tc.configType)
 			v2.SetConfigFile(tc.fileName)
@@ -1919,7 +1919,7 @@ func TestWriteConfigTOML(t *testing.T) {
 }
 
 func TestWriteConfigDotEnv(t *testing.T) {
-	fs := fstest.MapFS{}
+	f := mockFS{fstest.MapFS{}}
 	testCases := map[string]struct {
 		configName string
 		configType string
@@ -1942,7 +1942,7 @@ func TestWriteConfigDotEnv(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			v := New()
-			v.SetFs(fs)
+			v.SetFs(f)
 			v.SetConfigName(tc.configName)
 			v.SetConfigType(tc.configType)
 			err := v.ReadConfig(bytes.NewBuffer(tc.input))
@@ -1953,7 +1953,7 @@ func TestWriteConfigDotEnv(t *testing.T) {
 			// The TOML String method does not order the contents.
 			// Therefore, we must read the generated file and compare the data.
 			v2 := New()
-			v2.SetFs(fs)
+			v2.SetFs(f)
 			v2.SetConfigName(tc.configName)
 			v2.SetConfigType(tc.configType)
 			v2.SetConfigFile(tc.fileName)
@@ -1969,22 +1969,22 @@ func TestWriteConfigDotEnv(t *testing.T) {
 
 func TestSafeWriteConfig(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	v.SetFs(f)
 	v.AddConfigPath("/test")
 	v.SetConfigName("c")
 	v.SetConfigType("yaml")
 	require.NoError(t, v.ReadConfig(bytes.NewBuffer(yamlExample)))
 	require.NoError(t, v.SafeWriteConfig())
-	read, err := fs.ReadFile(testutil.AbsFilePath(t, "/test/c.yaml"))
+	read, err := f.ReadFile(testutil.AbsFilePath(t, "/test/c.yaml"))
 	require.NoError(t, err)
 	assert.Equal(t, yamlWriteExpected, read)
 }
 
 func TestSafeWriteConfigWithMissingConfigPath(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	v.SetFs(f)
 	v.SetConfigName("c")
 	v.SetConfigType("yaml")
 	require.EqualError(t, v.SafeWriteConfig(), "missing configuration for 'configPath'")
@@ -1992,9 +1992,9 @@ func TestSafeWriteConfigWithMissingConfigPath(t *testing.T) {
 
 func TestSafeWriteConfigWithExistingFile(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	fs[testutil.AbsFilePath(t, "/test/c.yaml")] = &fstest.MapFile{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	f.MapFS[testutil.AbsFilePath(t, "/test/c.yaml")] = &fstest.MapFile{}
+	v.SetFs(f)
 	v.AddConfigPath("/test")
 	v.SetConfigName("c")
 	v.SetConfigType("yaml")
@@ -2006,20 +2006,20 @@ func TestSafeWriteConfigWithExistingFile(t *testing.T) {
 
 func TestSafeWriteAsConfig(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	v.SetFs(f)
 	err := v.ReadConfig(bytes.NewBuffer(yamlExample))
 	require.NoError(t, err)
 	require.NoError(t, v.SafeWriteConfigAs("/test/c.yaml"))
-	_, err = fs.ReadFile("/test/c.yaml")
+	_, err = f.ReadFile("/test/c.yaml")
 	require.NoError(t, err)
 }
 
 func TestSafeWriteConfigAsWithExistingFile(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	fs["/test/c.yaml"] = &fstest.MapFile{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	f.MapFS["/test/c.yaml"] = &fstest.MapFile{}
+	v.SetFs(f)
 	err := v.SafeWriteConfigAs("/test/c.yaml")
 	require.Error(t, err)
 	_, ok := err.(ConfigFileAlreadyExistsError)
@@ -2028,9 +2028,9 @@ func TestSafeWriteConfigAsWithExistingFile(t *testing.T) {
 
 func TestWriteHiddenFile(t *testing.T) {
 	v := New()
-	fs := fstest.MapFS{}
-	fs[testutil.AbsFilePath(t, "/test/.config")] = &fstest.MapFile{}
-	v.SetFs(fs)
+	f := mockFS{fstest.MapFS{}}
+	f.MapFS[testutil.AbsFilePath(t, "/test/.config")] = &fstest.MapFile{}
+	v.SetFs(f)
 
 	v.SetConfigName(".config")
 	v.SetConfigType("yaml")
